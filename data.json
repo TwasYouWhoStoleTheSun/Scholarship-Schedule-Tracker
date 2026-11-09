@@ -1,0 +1,75 @@
+{
+    "814481155650486282": {
+        "characters": [
+            {
+                "name": "Lunar Delving: I",
+                "hand": "['Warning Sign', 'Empty Walkway', 'Shortcut']",
+                "deck": "['Shortcut', 'Crystal Caverns', 'Crystal Caverns', \"One's Public\", 'Distant Rumbles', 'Distant Rumbles', 'Distant Rumbles', 'Farseeker Hideout', 'Zealot to Change', 'Paid Advertisement!!!', 'Flock of Bats', 'Mushroom Grotto']",
+                "handsize": 3,
+                "original_deck": [
+                    "1 \"Warning Sign\"",
+                    "1 \"Empty Walkway\"",
+                    "2 \"Shortcut\"",
+                    "2 \"Crystal Caverns\"",
+                    "1 \"One's Public\"",
+                    "3 \"Distant Rumbles\"",
+                    "1 \"Farseeker Hideout\"",
+                    "1 \"Zealot to Change\"",
+                    "1 \"Paid Advertisement!!!\"",
+                    "1 \"Flock of Bats\"",
+                    "1 \"Mushroom Grotto\""
+                ],
+                "actions": {
+                    "Shortcut": {
+                        "cost_and_tags": "A small cut-in through the rocks.",
+                        "effect": "When this is cast, make an Instinct check.\n> SwH: Discard a card in your hand.\n> SwF: Discard a card in your hand, but encounter two pursuing Swarm of Rats.\n> FwH: Discard a card in your hand, but encounter two pursuing Swarm of Rats and set the environment to Ambushed.\n> FwF: Gain an additional Fear."
+                    },
+                    "Warning Sign": {
+                        "cost_and_tags": "It's a sign warning about the dangers here.",
+                        "effect": "When this is cast, all PCs mark a Stress, but gain a Hope. Shuffle a Misfortune into the deck."
+                    },
+                    "Empty Walkway": {
+                        "cost_and_tags": "The path ahead is clear of danger, for now.",
+                        "effect": "A moment of peace. When this is cast, do nothing."
+                    },
+                    "Crystal Caverns": {
+                        "cost_and_tags": "It's glittering here, glowing gems adorning the walls.",
+                        "effect": "While this is in hand, you may choose to gain advantage on a reaction roll. If you do, discard this, and shuffle 2 Misfortunes into this deck. When this is cast, one PC clears a Stress."
+                    },
+                    "One's Public": {
+                        "cost_and_tags": "A fractious but good natured mob is forming.",
+                        "effect": "Encounter two blocking Farseeker fans of Gartha. If they leave displeased, shuffle a Misfortune into your deck."
+                    },
+                    "Distant Rumbles": {
+                        "cost_and_tags": "Machinery is moving - by itself? As though taking its first steps.",
+                        "effect": "Automatically discard this if four other cards have been played while this is in hand. Automatically cast this if four rolls with Fear have been made while this is in hand.\n> When cast, encounter three pursuing Anomalous Machinery. ||reflavour Brawny Zombie||"
+                    },
+                    "Farseeker Hideout": {
+                        "cost_and_tags": "A small research area in a narrow corridor.",
+                        "effect": "When this is drawn, immediately encounter a group of interviewable Farseekers and their mini-lab - full of... interesting documents to all parties - researching rocks! and discard this.\n> If there are pursuing adversaries, they all immediately catch up and appear within Close Range of all PCs."
+                    },
+                    "Zealot to Change": {
+                        "cost_and_tags": "It seems the interior of the moon is leaking...",
+                        "effect": "When this is cast: Encounter two pursuing Green Ooze. Search your deck for a Misfortune."
+                    },
+                    "Paid Advertisement!!!": {
+                        "cost_and_tags": "Suddenly, a bright yellow ping; It's been a while since Gartha's seen one.",
+                        "effect": "When this is drawn, immediately cast this.\n> Encounter a blocking Sponsorship Offer; clear it by reading out the advertisement to the camera (Progress Countdown: 6).\n> Clearing this encounter gives all PCs 4 Handfuls of Tix! Leaving this advertisement unaddressed gains 4 Fear."
+                    },
+                    "Flock of Bats": {
+                        "cost_and_tags": "A massive cave; eyes follow you from above.",
+                        "effect": "Whenever a Misfortune is cast, automatically cast this as though it was a Failure with Fear.\n> When this is cast, make a Finesse check with disadvantage.\n> SwH: You see bats chittering from above, lively and docile.\n> SwF: Search your deck for a Misfortune. Shuffle a copy of this into your deck without triggering this effect.\n> FwH: Encounter two blocking Bat Swarms.\n> FwF: Encounter two blocking Bat Swarms, and movement now becomes difficult."
+                    },
+                    "Mushroom Grotto": {
+                        "cost_and_tags": "Somewhere out of the way. Fungal.",
+                        "effect": "When this is cast, make a Knowledge check.\n> SwH: Each PC gains a consumable.\n> SwF: Each PC gains a consumable and loses a Hope.\n> FwH: Each PC marks a Stress and encounter a pursuing Fungal Wraith.\n> FwH: Encounter a blocking Fungal Wraith, and all PCs becomes temporarily Vulnerable."
+                    }
+                },
+                "graveyard": "[]",
+                "moves": []
+            }
+        ],
+        "actions": {},
+        "active_character": 0
+    }
+}
