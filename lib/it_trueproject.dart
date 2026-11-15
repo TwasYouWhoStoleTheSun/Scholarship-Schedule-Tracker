@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const AssignmentTrackerApp());
@@ -35,6 +39,20 @@ class Assignment {
   final String subject;
   final DateTime dueDate;
   bool isComplete;
+
+  Map<String, Object> toJson() => {
+    'title': title,
+    'subject': subject,
+    'dueDate': dueDate.toIso8601String(),
+    'isComplete': isComplete,
+  };
+
+  factory Assignment.fromJson(Map<String, dynamic> json) => Assignment(
+    title: json['title'] as String,
+    subject: json['subject'] as String,
+    dueDate: DateTime.parse(json['dueDate'] as String),
+    isComplete: json['isComplete'] as bool? ?? false,
+  );
 }
 
 class AssignmentTrackerScreen extends StatefulWidget {
@@ -46,7 +64,20 @@ class AssignmentTrackerScreen extends StatefulWidget {
 }
 
 class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
-  final List<Assignment> _assignments = [
+  static const _assignmentsStorageKey = 'assignments';
+
+  final List<Assignment> _assignments = [];
+  bool _isLoading = true;
+  String? _loadError;
+  Future<void> _saveQueue = Future<void>.value();
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadAssignments());
+  }
+
+  List<Assignment> _defaultAssignments() => [
     Assignment(
       title: 'Essay: The Great Gatsby',
       subject: 'English Literature',
@@ -69,6 +100,86 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
     ),
   ];
 
+  Future<void> _loadAssignments() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final savedAssignments = preferences.getString(_assignmentsStorageKey);
+      final assignments = savedAssignments == null
+          ? _defaultAssignments()
+          : (jsonDecode(savedAssignments) as List<dynamic>).map((item) {
+              if (item is! Map<String, dynamic>) {
+                throw const FormatException(
+                  'Saved assignment has an invalid format.',
+                );
+              }
+              return Assignment.fromJson(item);
+            }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _assignments
+          ..clear()
+          ..addAll(assignments);
+        _isLoading = false;
+      });
+
+      if (savedAssignments == null) {
+        await _saveAssignments();
+      }
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'assignment storage',
+          context: ErrorDescription('while loading saved assignments'),
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'Could not load saved assignments. Please try again.';
+      });
+    }
+  }
+
+  Future<void> _saveAssignments() {
+    final snapshot = jsonEncode(
+      _assignments.map((assignment) => assignment.toJson()).toList(),
+    );
+    final save = _saveQueue.then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      final saved = await preferences.setString(
+        _assignmentsStorageKey,
+        snapshot,
+      );
+      if (!saved) {
+        throw StateError('SharedPreferences did not save assignments.');
+      }
+    });
+    _saveQueue = save.catchError((Object error, StackTrace stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'assignment storage',
+          context: ErrorDescription('while saving assignments'),
+        ),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save your assignments.')),
+        );
+      }
+    });
+    return _saveQueue;
+  }
+
   int get _upcomingCount =>
       _assignments.where((assignment) => !assignment.isComplete).length;
 
@@ -82,11 +193,18 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
 
     if (assignment != null) {
       setState(() => _assignments.add(assignment));
+      await _saveAssignments();
     }
   }
 
   void _toggleAssignment(Assignment assignment) {
     setState(() => assignment.isComplete = !assignment.isComplete);
+    unawaited(_saveAssignments());
+  }
+
+  void _deleteAssignment(Assignment assignment) {
+    setState(() => _assignments.remove(assignment));
+    unawaited(_saveAssignments());
   }
 
   @override
@@ -202,7 +320,26 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
               ),
             ),
             Expanded(
-              child: _assignments.isEmpty
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _loadError != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_loadError!, textAlign: TextAlign.center),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: _loadAssignments,
+                              child: const Text('Try again'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : _assignments.isEmpty
                   ? const _EmptyAssignments()
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
@@ -214,6 +351,7 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
                         return _AssignmentCard(
                           assignment: assignment,
                           onToggle: () => _toggleAssignment(assignment),
+                          onDelete: () => _deleteAssignment(assignment),
                         );
                       },
                     ),
@@ -229,7 +367,9 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
             height: 56,
             child: FilledButton.icon(
               key: const Key('addAssignmentButton'),
-              onPressed: _showAddAssignmentSheet,
+              onPressed: _isLoading || _loadError != null
+                  ? null
+                  : _showAddAssignmentSheet,
               icon: const Icon(Icons.add_rounded, size: 23),
               label: const Text(
                 'Add assignment',
@@ -319,10 +459,15 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _AssignmentCard extends StatelessWidget {
-  const _AssignmentCard({required this.assignment, required this.onToggle});
+  const _AssignmentCard({
+    required this.assignment,
+    required this.onToggle,
+    required this.onDelete,
+  });
 
   final Assignment assignment;
   final VoidCallback onToggle;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -417,11 +562,22 @@ class _AssignmentCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(
-            Icons.more_horiz_rounded,
-            color: Color(0xFF9AA4B3),
-            size: 22,
-          ),
+          if (assignment.isComplete)
+            IconButton(
+              tooltip: 'Delete assignment',
+              onPressed: onDelete,
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: Color(0xFFE36B69),
+                size: 22,
+              ),
+            )
+          else
+            const Icon(
+              Icons.more_horiz_rounded,
+              color: Color(0xFF9AA4B3),
+              size: 22,
+            ),
         ],
       ),
     );
