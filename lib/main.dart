@@ -33,18 +33,21 @@ class Assignment {
     required this.subject,
     required this.dueDate,
     this.isComplete = false,
+    this.headerColorValue = 0xFF3478F6,
   });
 
   final String title;
   final String subject;
   final DateTime dueDate;
   bool isComplete;
+  final int headerColorValue;
 
   Map<String, Object> toJson() => {
     'title': title,
     'subject': subject,
     'dueDate': dueDate.toIso8601String(),
     'isComplete': isComplete,
+    'headerColorValue': headerColorValue,
   };
 
   factory Assignment.fromJson(Map<String, dynamic> json) => Assignment(
@@ -52,6 +55,7 @@ class Assignment {
     subject: json['subject'] as String,
     dueDate: DateTime.parse(json['dueDate'] as String),
     isComplete: json['isComplete'] as bool? ?? false,
+    headerColorValue: json['headerColorValue'] as int? ?? 0xFF3478F6,
   );
 }
 
@@ -82,21 +86,25 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
       title: 'Essay: The Great Gatsby',
       subject: 'English Literature',
       dueDate: DateTime.now().add(const Duration(days: 1)),
+      headerColorValue: 0xFF3478F6,
     ),
     Assignment(
       title: 'Chapter 6 Problem Set',
       subject: 'Mathematics',
       dueDate: DateTime.now().add(const Duration(days: 3)),
+      headerColorValue: 0xFFFF9B54,
     ),
     Assignment(
       title: 'Cell Structure Lab Report',
       subject: 'Biology',
       dueDate: DateTime.now().add(const Duration(days: 5)),
+      headerColorValue: 0xFF39AE87,
     ),
     Assignment(
       title: 'World War II Presentation',
       subject: 'History',
       dueDate: DateTime.now().add(const Duration(days: 8)),
+      headerColorValue: 0xFF8B72C8,
     ),
   ];
 
@@ -197,7 +205,22 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
     }
   }
 
+  Future<void> _showEditAssignmentSheet(Assignment assignment) async {
+    final updatedAssignment = await showModalBottomSheet<Assignment>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _AddAssignmentSheet(assignment: assignment),
+    );
 
+    if (updatedAssignment != null) {
+      final index = _assignments.indexOf(assignment);
+      if (index >= 0) {
+        setState(() => _assignments[index] = updatedAssignment);
+        await _saveAssignments();
+      }
+    }
+  }
 
   void _toggleAssignment(Assignment assignment) {
     setState(() => assignment.isComplete = !assignment.isComplete);
@@ -343,17 +366,30 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
                     )
                   : _assignments.isEmpty
                   ? const _EmptyAssignments()
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-                      itemCount: _assignments.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final assignment = _assignments[index];
-                        return _AssignmentCard(
-                          assignment: assignment,
-                          onToggle: () => _toggleAssignment(assignment),
-                          onDelete: () => _deleteAssignment(assignment),
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final columnCount = constraints.maxWidth > 400 ? 3 : 1;
+
+                        return GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                          itemCount: _assignments.length,
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: columnCount,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                mainAxisExtent: 180,
+                              ),
+                          itemBuilder: (context, index) {
+                            final assignment = _assignments[index];
+                            return _AssignmentCard(
+                              assignment: assignment,
+                              onToggle: () => _toggleAssignment(assignment),
+                              onDelete: () => _deleteAssignment(assignment),
+                              onEdit: () =>
+                                  _showEditAssignmentSheet(assignment),
+                            );
+                          },
                         );
                       },
                     ),
@@ -465,20 +501,22 @@ class _AssignmentCard extends StatelessWidget {
     required this.assignment,
     required this.onToggle,
     required this.onDelete,
+    required this.onEdit,
   });
 
   final Assignment assignment;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final dueText = _formatDueDate(assignment.dueDate);
     final isOverdue =
         !assignment.isComplete && assignment.dueDate.isBefore(DateTime.now());
+    final headerColor = Color(assignment.headerColorValue);
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -491,133 +529,146 @@ class _AssignmentCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          InkWell(
-            onTap: onToggle,
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(
-                assignment.isComplete
-                    ? Icons.check_circle_rounded
-                    : Icons.radio_button_unchecked_rounded,
-                color: assignment.isComplete
-                    ? const Color(0xFF39AE87)
-                    : const Color(0xFFB7C0CF),
-                size: 23,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  assignment.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: assignment.isComplete
-                        ? const Color(0xFF929BAA)
-                        : const Color(0xFF263248),
-                    decoration: assignment.isComplete
-                        ? TextDecoration.lineThrough
-                        : null,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(17),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              key: const Key('assignmentHeader'),
+              height: 42,
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              color: headerColor,
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.subject_rounded,
+                    size: 16,
+                    color: Colors.white,
                   ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  assignment.subject,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF7C8799),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_rounded,
-                      size: 13,
-                      color: isOverdue
-                          ? const Color(0xFFE36B69)
-                          : const Color(0xFF71809A),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      assignment.isComplete ? 'Completed' : dueText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isOverdue
-                            ? const Color(0xFFE36B69)
-                            : const Color(0xFF71809A),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      assignment.subject,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          if (assignment.isComplete)
-            IconButton(
-              tooltip: 'Delete assignment',
-              onPressed: onDelete,
-              icon: const Icon(
-                Icons.delete_outline_rounded,
-                color: Color(0xFFE36B69),
-                size: 22,
+                  ),
+                ],
               ),
-            )
-          else
-            const Icon(
-              Icons.more_horiz_rounded,
-              color: Color(0xFF9AA4B3),
-              size: 22,
             ),
-            onSelected: (value) {
-              if (value == 'edit') {
-                onEdit();
-              } else if (value == 'delete') {
-                onDelete();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem<String>(
-                value: 'edit',
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Icon(Icons.edit_outlined, size: 18),
-                    SizedBox(width: 10),
-                    Text('Edit assignment'),
+                    InkWell(
+                      onTap: onToggle,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          assignment.isComplete
+                              ? Icons.check_circle_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          color: assignment.isComplete
+                              ? const Color(0xFF39AE87)
+                              : const Color(0xFFB7C0CF),
+                          size: 23,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            assignment.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: assignment.isComplete
+                                  ? const Color(0xFF929BAA)
+                                  : const Color(0xFF263248),
+                              decoration: assignment.isComplete
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today_rounded,
+                                size: 13,
+                                color: isOverdue
+                                    ? const Color(0xFFE36B69)
+                                    : const Color(0xFF71809A),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  assignment.isComplete ? 'Completed' : dueText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: isOverdue
+                                        ? const Color(0xFFE36B69)
+                                        : const Color(0xFF71809A),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    PopupMenuButton<String>(
+                      tooltip: 'Assignment actions',
+                      icon: const Icon(
+                        Icons.more_horiz_rounded,
+                        color: Color(0xFF9AA4B3),
+                        size: 22,
+                      ),
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          onEdit();
+                        } else if (value == 'delete') {
+                          onDelete();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Text('Edit assignment'),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Text(
+                            'Delete assignment',
+                            style: TextStyle(color: Color(0xFFE36B69)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.delete_outline_rounded,
-                      size: 18,
-                      color: Color(0xFFE36B69),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Delete assignment',
-                      style: TextStyle(color: Color(0xFFE36B69)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -683,6 +734,18 @@ class _AddAssignmentSheetState extends State<_AddAssignmentSheet> {
   final _titleController = TextEditingController();
   final _subjectController = TextEditingController();
   DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
+  int _headerColorValue = 0xFF3478F6;
+
+  static const _headerColors = <int>[
+    0xFF3478F6,
+    0xFF39AE87,
+    0xFFFF9B54,
+    0xFFE36B69,
+    0xFF8B72C8,
+    0xFF2FA6B4,
+    0xFFE3A72F,
+    0xFF60758F,
+  ];
 
   bool get _isEditing => widget.assignment != null;
 
@@ -693,6 +756,7 @@ class _AddAssignmentSheetState extends State<_AddAssignmentSheet> {
       _titleController.text = widget.assignment!.title;
       _subjectController.text = widget.assignment!.subject;
       _dueDate = widget.assignment!.dueDate;
+      _headerColorValue = widget.assignment!.headerColorValue;
     }
   }
 
@@ -723,6 +787,7 @@ class _AddAssignmentSheetState extends State<_AddAssignmentSheet> {
       subject: _subjectController.text.trim(),
       dueDate: _dueDate,
       isComplete: widget.assignment?.isComplete ?? false,
+      headerColorValue: _headerColorValue,
     );
 
     Navigator.of(context).pop(updatedAssignment);
@@ -804,6 +869,53 @@ class _AddAssignmentSheetState extends State<_AddAssignmentSheet> {
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'Enter a subject'
                       : null,
+                ),
+                const SizedBox(height: 16),
+                _fieldLabel('Header colour'),
+                const SizedBox(height: 10),
+                Wrap(
+                  key: const Key('assignmentHeaderColorPicker'),
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: _headerColors.map((colorValue) {
+                    final isSelected = _headerColorValue == colorValue;
+                    final color = Color(colorValue);
+                    return InkWell(
+                      key: Key('headerColor_$colorValue'),
+                      onTap: () =>
+                          setState(() => _headerColorValue = colorValue),
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF263248)
+                                : Colors.transparent,
+                            width: 3,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x140E1D37),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              )
+                            : null,
+                      ),
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 16),
                 _fieldLabel('Due date'),

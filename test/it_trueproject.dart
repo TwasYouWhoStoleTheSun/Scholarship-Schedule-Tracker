@@ -341,21 +341,31 @@ class _AssignmentTrackerScreenState extends State<AssignmentTrackerScreen> {
                     )
                   : _assignments.isEmpty
                   ? const _EmptyAssignments()
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-                      itemCount: _assignments.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final assignment = _assignments[index];
-                        return _AssignmentCard(
-                          assignment: assignment,
-                          onToggle: () => _toggleAssignment(assignment),
-                          onDelete: () => _deleteAssignment(assignment),
-                        );
-                      },
-                    ),
+: LayoutBuilder(
+    builder: (context, constraints) {
+      final columnCount = constraints.maxWidth > 400 ? 3 : 1;
+
+      return GridView.builder(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        itemCount: _assignments.length,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columnCount,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          mainAxisExtent: 180,
+        ),
+        itemBuilder: (context, index) {
+          final assignment = _assignments[index];
+          return _AssignmentCard(
+            assignment: assignment,
+            onToggle: () => _toggleAssignment(assignment),
+            onDelete: () => _deleteAssignment(assignment),
+          );
+        },
+      );
+    },
             ),
+            )
           ],
         ),
       ),
